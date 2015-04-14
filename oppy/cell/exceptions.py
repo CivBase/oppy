@@ -1,6 +1,7 @@
 # Copyright 2014, 2015, Nik Kinkel and David Johnston
 # See LICENSE for licensing information
 
+
 class NotEnoughBytes(Exception):
     pass
 

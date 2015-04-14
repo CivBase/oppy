@@ -4,41 +4,38 @@
 import abc
 import struct
 
-import oppy.cell.definitions as DEF
-
+from oppy.cell import definitions as defs
 from oppy.cell.exceptions import NotEnoughBytes, UnknownCellCommand
 
 
 class Cell(object):
-    '''An abstract base class for other kinds of cells.'''
-
+    """An abstract base class for other kinds of cells."""
     __metaclass__ = abc.ABCMeta
     _subclass_map = None
 
     def getPayload(self):
-        '''Return just the payload bytes of a cell.
+        """Return just the payload bytes of a cell.
 
         For fixed-length cells, pad with null bytes to the appropriate length
         according to Link Protocol version. Primarily useful for encrypting or
         decrypting cells.
 
         :returns: **str** cell payload bytes
-        '''
-        start, _ = self.payloadRange()
+        """
+        start = self.payloadRange()[0]
         return self.getBytes()[start:]
 
     @abc.abstractmethod
     def payloadRange(self):
-        '''Return the (start, end) indices of this cell's payload as a
-        2-tuple.
+        """Return the (start, end) indices of this cell's payload as a 2-tuple.
 
-        :returns: **tuple, int** (start, end) payload indices.'''
+        :returns: **tuple, int** (start, end) payload indices.
+        """
         pass
 
     @staticmethod
     def enoughDataForCell(data, link_version=3):
-        '''Return True iff the str **data** contains enough bytes to build a
-        cell.
+        """Return True iff the str **data** contains enough bytes to build a cell.
 
         The command byte is checked to determine the general type of
         cell to look for. For fixed-length cells, this is enough to know
@@ -51,32 +48,34 @@ class Cell(object):
             4, 514 bytes are required.
         :returns: **bool** that's **True** iff data is long enough to
             build the type of cell indicated by the command byte.
-        '''
+        """
         if link_version < 4:
-            fmt = "!HB"
-            required_length = DEF.FIXED_LEN_V3_LEN
+            fmt = '!HB'
+            required_length = defs.FIXED_LEN_V3_LEN
+
         else:
-            fmt = "!IB"
-            required_length = DEF.FIXED_LEN_V4_LEN
+            fmt = '!IB'
+            required_length = defs.FIXED_LEN_V4_LEN
 
         header_len = struct.calcsize(fmt)
-
         if len(data) < header_len:
             return False
-        _, cmd = struct.unpack(fmt, data[:header_len])
-        if cmd in DEF.FIXED_LEN_CMD_IDS:
+
+        cmd = struct.unpack(fmt, data[:header_len])[1]
+        if cmd in defs.FIXED_LEN_CMD_IDS:
             return len(data) >= required_length
-        elif cmd in DEF.VAR_LEN_CMD_IDS:
-            required_len = struct.unpack('!H',
-                                         data[header_len:header_len + 2])[0]
+
+        if cmd in defs.VAR_LEN_CMD_IDS:
+            required_len = struct.unpack(
+                '!H',  data[header_len:header_len + 2])[0]
+
             return len(data) >= required_len
-        else:
-            msg = "Unknown cell cmd: {}.".format(cmd)
-            raise UnknownCellCommand(msg)
+
+        raise UnknownCellCommand('Unknown cell cmd: {}.'.format(cmd))
 
     @staticmethod
     def parse(data, link_version=3, encrypted=False):
-        '''Return an instance of a cell constructed from the str data.
+        """Return an instance of a cell constructed from the str data.
 
         If encrypted is True and the type if cell is RELAY or RELAY_EARLY,
         don't try to parse the payload and just return a
@@ -92,35 +91,37 @@ class Cell(object):
         :param bool encrypted: whether or not we think this cell is
             encrypted. If True and we see a RELAY or RELAY_EARLY command
             do not attempt to parse payload.
-
         :returns: instantiated cell type as dictated by the command byte,
             parsed and extracted from data.
-        '''
+        """
         if not 1 <= link_version <= 4:
-            msg = "link_version must be leq 4, but found {} instead"
-            raise ValueError(msg.format(link_version))
+            raise ValueError(
+                'link_version must be leq 4, but found {} instead'.format(
+                    link_version))
 
         # Handle the case where the circuit id represented as two octets and
         # the case where it is four octets:
-        fmt = "!HB" if link_version <= 3 else "!IB"
+        fmt = '!HB' if link_version <= 3 else '!IB'
         header_len = struct.calcsize(fmt)
-
         if len(data) < header_len:
             raise NotEnoughBytes()
+
         circ_id, cmd = struct.unpack(fmt, data[:header_len])
+        if cmd not in defs.CELL_CMD_IDS:
+            raise UnknownCellCommand(
+                'When parsing cell data, found an unknown cmd: {}.'.format(cmd))
 
-        if cmd not in DEF.CELL_CMD_IDS:
-            msg = "When parsing cell data, found an unknown cmd: {}."
-            raise UnknownCellCommand(msg.format(cmd))
-
-        if cmd in DEF.VAR_LEN_CMD_IDS:
+        if cmd in defs.VAR_LEN_CMD_IDS:
             from oppy.cell.varlen import VarLenCell
             cls = VarLenCell
+
         # only try to create a concrete relay cell subclass if payload
         # is not encrypted
-        elif encrypted is False and (cmd == DEF.RELAY_CMD or cmd == DEF.RELAY_EARLY_CMD):
+        elif encrypted is False and (
+                cmd == defs.RELAY_CMD or cmd == defs.RELAY_EARLY_CMD):
             from oppy.cell.relay import RelayCell
             cls = RelayCell
+
         else:
             from oppy.cell.fixedlen import FixedLenCell
             cls = FixedLenCell
@@ -132,7 +133,7 @@ class Cell(object):
 
     @classmethod
     def _parse(cls, data, header):
-        '''Use the given cell data and (partial) cell header information to
+        """Use the given cell data and (partial) cell header information to
         instantiate a cell object of the appropriate type.
 
         .. note:: *header.cmd* and *header.link_version* must be set by the
@@ -153,12 +154,12 @@ class Cell(object):
             containing some previously parsed info (may be either a
             :class:`~oppy.cell.fixedlen.FixedLenCell.Header` or
             :class:`~oppy.cell.varlen.VarLenCell.Header`).
-        '''
-
+        """
         if not isinstance(header, cls.Header):
-            raise TypeError("The given header object has the wrong type.")
+            raise TypeError('The given header object has the wrong type.')
+
         if header.cmd is None or header.link_version is None:
-            raise ValueError("Fields of the given header object are invalid.")
+            raise ValueError('Fields of the given header object are invalid.')
 
         # Construct a cell of the appropriate concrete type.
         subclass = cls._getSubclass(header, data)
@@ -167,15 +168,16 @@ class Cell(object):
         # Parse additional information from data and add it to the new cell.
         cell._parseHeader(data)
         if len(data) < len(cell):
-            fmt = "Needed {} bytes to finish parsing data; only found {}."
-            msg = fmt.format(len(cell), len(data))
-            raise NotEnoughBytes(msg)
+            raise NotEnoughBytes(
+                'Needed {} bytes to finish parsing data; only found {}.'.format(
+                    len(cell), len(data)))
+
         cell._parsePayload(data)
         return cell
 
     @classmethod
     def _getSubclass(cls, header, data):
-        '''Use *header* to interpret the given cell data.
+        """Use *header* to interpret the given cell data.
 
         A cell type which will be appropriate for encapsulating/representing
         this cell data is then selected and returned.
@@ -183,40 +185,42 @@ class Cell(object):
         :param cls.Header header: the header in use for this cell
         :param str data: raw str to parse
         :returns: Concrete subclass of *cls*
-        '''
+        """
         if cls._subclass_map is None:
             cls._initSubclassMap()
+
         return cls._subclass_map[header.cmd]
 
     @abc.abstractmethod
     def _parseHeader(self, data):
-        '''Parse any remaining header information from *data*.
-        '''
+        """Parse any remaining header information from *data*."""
         pass
 
     @abc.abstractmethod
     def _parsePayload(self, data):
-        '''Parse payload information from *data*.
+        """Parse payload information from *data*.
 
         This process depends upon the header-parsing process being complete.
-        '''
+        """
         pass
 
     def __repr__(self):
-        fmt = type(self).__name__ + "(header={}, payload={})"
-        return fmt.format(self.header, repr(self.payload))
+        return '{}(header={}, payload={})'.format(
+            type(self).__name__, self.header, repr(self.payload))
 
     def __len__(self):
-        _, end = self.payloadRange()
+        end = self.payloadRange()[1]
         return end
 
     def __eq__(self, other):
         if type(self) is type(other):
             return self.__dict__ == other.__dict__
+
         return False
 
     class Header(object):
-        '''A dummy header type that exists only to be overridden by classes
-        that inherit from :class:`~oppy.cell.cell.Cell`.'''
+        """A dummy header type that exists only to be overridden by classes
+        that inherit from :class:`~oppy.cell.cell.Cell`.
+        """
         def __init__(self):
-            raise NotImplementedError("This is an abstract class.")
+            raise NotImplementedError('This is an abstract class.')
