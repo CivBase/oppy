@@ -54,14 +54,11 @@ class Cell(object):
         '''
         if link_version < 4:
             fmt = "!HB"
-            header_len = DEF.PAYLOAD_START_V3
             required_length = DEF.FIXED_LEN_V3_LEN
         else:
             fmt = "!IB"
-            header_len = DEF.PAYLOAD_START_V4
             required_length = DEF.FIXED_LEN_V4_LEN
 
-        fmt = "!HB" if link_version <= 3 else "!IB"
         header_len = struct.calcsize(fmt)
 
         if len(data) < header_len:
@@ -116,7 +113,6 @@ class Cell(object):
             msg = "When parsing cell data, found an unknown cmd: {}."
             raise UnknownCellCommand(msg.format(cmd))
 
-        cls = None
         if cmd in DEF.VAR_LEN_CMD_IDS:
             from oppy.cell.varlen import VarLenCell
             cls = VarLenCell
