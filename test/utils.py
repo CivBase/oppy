@@ -11,7 +11,8 @@ class BaseTestCase(unittest.TestCase):
         self.addCleanup(patch.stopall)
 
 
-#
+# this code gleefully stolen from jsbueno on stack overflow
+# http://stackoverflow.com/questions/9757299/python-testing-an-abstract-base-class
 def concrete(abclass):
     """
     >>> import abc
@@ -34,5 +35,5 @@ def concrete(abclass):
         # replace each abc method or property with an identity function:
         new_dict[abstractmethod] = lambda x, *args, **kw: (x, args, kw)
 
-    # creates a new class, with the overriden ABCs:
+    # create a new class, with the overridden ABCs
     return type('concrete_%s' % abclass.__name__, (abclass,), new_dict)
