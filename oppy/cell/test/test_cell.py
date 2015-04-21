@@ -1,7 +1,7 @@
+from mock import Mock
+
 from oppy.cell.cell import Cell as AbstractCell
 from test.utils import BaseTestCase, concrete
-
-from mock import Mock
 
 
 Cell = concrete(AbstractCell)
