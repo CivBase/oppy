@@ -18,6 +18,12 @@ class BaseTestCase(unittest.TestCase):
                 DATA_BASE[:(size % len(DATA_BASE))])
 
 
+class DataTestCase(BaseTestCase):
+    def gen_data(self, size):
+        return (DATA_BASE * (size / len(DATA_BASE)) +
+                DATA_BASE[:(size % len(DATA_BASE))])
+
+
 # this code gleefully stolen from jsbueno on stack overflow
 # http://stackoverflow.com/questions/9757299/python-testing-an-abstract-base-class
 def concrete(abclass):
