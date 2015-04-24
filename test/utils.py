@@ -2,6 +2,9 @@ import unittest
 from mock import patch
 
 
+DATA_BASE = 'abcdefghijklmnopqrstuvwxyz'
+
+
 patch_object = lambda *args, **kwargs: patch.object(
     *args, autospec=True, **kwargs)
 
@@ -9,6 +12,12 @@ patch_object = lambda *args, **kwargs: patch.object(
 class BaseTestCase(unittest.TestCase):
     def setUp(self):
         self.addCleanup(patch.stopall)
+
+
+class DataTestCase(BaseTestCase):
+    def gen_data(self, size):
+        return (DATA_BASE * (size / len(DATA_BASE)) +
+                DATA_BASE[:(size % len(DATA_BASE))])
 
 
 # this code gleefully stolen from jsbueno on stack overflow
