@@ -2,7 +2,7 @@ from mock import call, Mock, patch
 
 from oppy.cell import cell, fixedlen, relay, varlen
 from oppy.cell.cell import Cell as AbstractCell
-from test.utils import BaseTestCase, DataTestCase, concrete, patch_object
+from test.utils import BaseTestCase, concrete, patch_object
 
 
 Cell = concrete(AbstractCell)
@@ -27,63 +27,54 @@ class CellGetPayloadTestCase(BaseTestCase):
         self.assertItemsEqual(result, [2, 3])
 
 
-class CellEnoughDataForCellTestCase(DataTestCase):
+class CellEnoughDataForCellTestCase(BaseTestCase):
     def setUp(self):
         super(CellEnoughDataForCellTestCase, self).setUp()
         self.mock_struct = patch_object(cell, 'struct').start()
 
-        self.mock_struct.calcsize.return_value = 5
-
     def test_data_shorter_than_header(self):
         result = AbstractCell.enoughDataForCell(
-            self.gen_data(4), link_version=1)
+            self.gen_data(2), link_version=1)
 
         self.assertFalse(result)
-        self.mock_struct.calcsize.assert_called_once_with('!HB')
         self.assertFalse(self.mock_struct.unpack.called)
 
     def test_fixed_length_command(self):
-        self.mock_struct.unpack.return_value = (None, cell.DEF.PADDING_CMD)
+        self.mock_struct.unpack.return_value = (None, 0)
 
         result = AbstractCell.enoughDataForCell(
-            self.gen_data(cell.DEF.FIXED_LEN_V4_LEN), link_version=4)
+            self.gen_data(514), link_version=4)
 
         self.assertTrue(result)
-        self.mock_struct.calcsize.assert_called_once_with('!IB')
         self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
 
     def test_fixed_length_command_shorter_than_required(self):
-        self.mock_struct.unpack.return_value = (None, cell.DEF.PADDING_CMD)
+        self.mock_struct.unpack.return_value = (None, 0)
 
         result = AbstractCell.enoughDataForCell(
-            self.gen_data(cell.DEF.FIXED_LEN_V4_LEN - 5), link_version=4)
+            self.gen_data(509), link_version=4)
 
         self.assertFalse(result)
-        self.mock_struct.calcsize.assert_called_once_with('!IB')
         self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
 
     def test_variable_length_command(self):
-        self.mock_struct.unpack.side_effect = [
-            (None, cell.DEF.VERSIONS_CMD), (8, None)]
+        self.mock_struct.unpack.side_effect = [(None, 7), (8, None)]
 
         result = AbstractCell.enoughDataForCell(
             self.gen_data(8), link_version=4)
 
         self.assertTrue(result)
-        self.mock_struct.calcsize.assert_called_once_with('!IB')
         self.mock_struct.unpack.assert_has_calls([
             call('!IB', 'abcde'),
             call('!H', 'fg')])
 
     def test_variable_length_command_shorter_than_required(self):
-        self.mock_struct.unpack.side_effect = [
-            (None, cell.DEF.VERSIONS_CMD), (8, None)]
+        self.mock_struct.unpack.side_effect = [(None, 7), (8, None)]
 
         result = AbstractCell.enoughDataForCell(
             self.gen_data(7), link_version=4)
 
         self.assertFalse(result)
-        self.mock_struct.calcsize.assert_called_once_with('!IB')
         self.mock_struct.unpack.assert_has_calls([
             call('!IB', 'abcde'),
             call('!H', 'fg')])
@@ -98,11 +89,10 @@ class CellEnoughDataForCellTestCase(DataTestCase):
             self.gen_data(5),
             link_version=4)
 
-        self.mock_struct.calcsize.assert_called_once_with('!IB')
         self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
 
 
-class CellParseTestCase(DataTestCase):
+class CellParseTestCase(BaseTestCase):
     def setUp(self):
         super(CellParseTestCase, self).setUp()
         self.mock_struct = patch_object(cell, 'struct').start()
@@ -111,8 +101,7 @@ class CellParseTestCase(DataTestCase):
 
     @patch_object(varlen, 'VarLenCell')
     def test_varlen(self, mock_varlencell):
-        self.mock_struct.unpack.return_value = (
-            'circ id', cell.DEF.VERSIONS_CMD)
+        self.mock_struct.unpack.return_value = ('circ id', 7)
 
         result = AbstractCell.parse(self.gen_data(6), link_version=4)
 
@@ -120,14 +109,14 @@ class CellParseTestCase(DataTestCase):
         self.mock_struct.calcsize.assert_called_once_with('!IB')
         self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
         mock_varlencell.Header.assert_called_once_with(
-            circ_id='circ id', cmd=cell.DEF.VERSIONS_CMD, link_version=4)
+            circ_id='circ id', cmd=7, link_version=4)
 
         mock_varlencell._parse.assert_called_once_with(
             'abcdef', mock_varlencell.Header.return_value)
 
     @patch_object(relay, 'RelayCell')
     def test_relay(self, mock_relaycell):
-        self.mock_struct.unpack.return_value = ('circ id', cell.DEF.RELAY_CMD)
+        self.mock_struct.unpack.return_value = ('circ id', 3)
 
         result = AbstractCell.parse(self.gen_data(6), link_version=4)
 
@@ -135,14 +124,14 @@ class CellParseTestCase(DataTestCase):
         self.mock_struct.calcsize.assert_called_once_with('!IB')
         self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
         mock_relaycell.Header.assert_called_once_with(
-            circ_id='circ id', cmd=cell.DEF.RELAY_CMD, link_version=4)
+            circ_id='circ id', cmd=3, link_version=4)
 
         mock_relaycell._parse.assert_called_once_with(
             'abcdef', mock_relaycell.Header.return_value)
 
     @patch_object(fixedlen, 'FixedLenCell')
     def test_relay_encrypted(self, mock_fixedlencell):
-        self.mock_struct.unpack.return_value = ('circ id', cell.DEF.RELAY_CMD)
+        self.mock_struct.unpack.return_value = ('circ id', 3)
 
         result = AbstractCell.parse(
             self.gen_data(6), link_version=4, encrypted=True)
@@ -151,14 +140,14 @@ class CellParseTestCase(DataTestCase):
         self.mock_struct.calcsize.assert_called_once_with('!IB')
         self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
         mock_fixedlencell.Header.assert_called_once_with(
-            circ_id='circ id', cmd=cell.DEF.RELAY_CMD, link_version=4)
+            circ_id='circ id', cmd=3, link_version=4)
 
         mock_fixedlencell._parse.assert_called_once_with(
             'abcdef', mock_fixedlencell.Header.return_value)
 
     @patch_object(fixedlen, 'FixedLenCell')
     def test_fixedlen(self, mock_fixedlencell):
-        self.mock_struct.unpack.return_value = ('circ id', cell.DEF.PADDING_CMD)
+        self.mock_struct.unpack.return_value = ('circ id', 0)
 
         result = AbstractCell.parse(self.gen_data(6), link_version=4)
 
@@ -166,7 +155,7 @@ class CellParseTestCase(DataTestCase):
         self.mock_struct.calcsize.assert_called_once_with('!IB')
         self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
         mock_fixedlencell.Header.assert_called_once_with(
-            circ_id='circ id', cmd=cell.DEF.PADDING_CMD, link_version=4)
+            circ_id='circ id', cmd=0, link_version=4)
 
         mock_fixedlencell._parse.assert_called_once_with(
             'abcdef', mock_fixedlencell.Header.return_value)
@@ -218,7 +207,7 @@ class CellParseTestCase(DataTestCase):
         self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
 
 
-class CellParseHelperTestCase(DataTestCase):
+class CellParseHelperTestCase(BaseTestCase):
     def setUp(self):
         super(CellParseHelperTestCase, self).setUp()
         self.mock_get_subclass = patch.object(
@@ -293,7 +282,7 @@ class CellParseHelperTestCase(DataTestCase):
         self.assertFalse(self.mock_cell._parsePayload.called)
 
 
-class CellRepresentTestCase(DataTestCase):
+class CellRepresentTestCase(BaseTestCase):
     def setUp(self):
         super(CellRepresentTestCase, self).setUp()
         self.cell = Cell()
@@ -308,7 +297,7 @@ class CellRepresentTestCase(DataTestCase):
             result, "concrete_Cell(header=header, payload='payload')")
 
 
-class CellLengthTestCase(DataTestCase):
+class CellLengthTestCase(BaseTestCase):
     def setUp(self):
         super(CellLengthTestCase, self).setUp()
         self.mock_cell_payload_range = Mock()
@@ -324,7 +313,7 @@ class CellLengthTestCase(DataTestCase):
         self.assertEqual(result, 2)
 
 
-class CellEqualTestCase(DataTestCase):
+class CellEqualTestCase(BaseTestCase):
     def setUp(self):
         super(CellEqualTestCase, self).setUp()
         self.cell = Cell()

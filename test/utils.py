@@ -13,6 +13,10 @@ class BaseTestCase(unittest.TestCase):
     def setUp(self):
         self.addCleanup(patch.stopall)
 
+    def gen_data(self, size):
+        return (DATA_BASE * (size / len(DATA_BASE)) +
+                DATA_BASE[:(size % len(DATA_BASE))])
+
 
 class DataTestCase(BaseTestCase):
     def gen_data(self, size):
