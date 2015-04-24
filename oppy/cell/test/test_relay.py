@@ -127,3 +127,66 @@ class RelayExtend2CellMakeTestCase(BaseTestCase):
         self.assertFalse(self.mock_fixedlen_header.called)
         self.assertFalse(self.mock_relay_header.called)
         self.assertFalse(self.mock_relay_extend_2_cell.called)
+
+    def test_nspec_equal_to_len_of_lspecs(self):
+        hdata = self.gen_data(84)
+        lspecs = [self.gen_data(8), self.gen_data(20)]
+
+        result = RelayExtend2Cell.make(1, hdata=hdata, nspec=2, lspecs=lspecs, early=False)
+
+        self.assertEqual(result, self.mock_relay_extend_2_cell.return_value)
+        self.mock_fixedlen_header.assert_called_once_with(circ_id=1, cmd=3, link_version=3)
+        self.mock_relay_header.assert_called_once_with(
+            cmd=14, recognized="\x00\x00", stream_id=0,
+            digest="\x00\x00\x00\x00", rpayload_len=117)
+
+        self.mock_relay_extend_2_cell.assert_called_once_with(
+            self.mock_fixedlen_header.return_value,
+            rheader=self.mock_relay_header.return_value, nspec=2,
+            lspecs=lspecs, htype=2, hlen=84, hdata=hdata)
+
+    def test_nspec_zero_lspecs_none(self):
+        hdata = self.gen_data(84)
+
+        self.assertRaisesRegexp(
+            relay.BadPayloadData,
+            '^No Link Specifiers found. At least 1 Link Specifier is required.$',
+            RelayExtend2Cell.make,
+            1,
+            nspec=0,
+            hdata=hdata)
+
+        self.mock_fixedlen_header.assert_called_once_with(circ_id=1, cmd=9, link_version=3)
+        self.assertFalse(self.mock_relay_header.called)
+        self.assertFalse(self.mock_relay_extend_2_cell.called)
+
+    def test_nspec_none_lspecs_none(self):
+        hdata = self.gen_data(84)
+
+        self.assertRaisesRegexp(
+            relay.BadPayloadData,
+            '^No Link Specifiers found. At least 1 Link Specifier is required.$',
+            RelayExtend2Cell.make,
+            1,
+            hdata=hdata)
+
+        self.mock_fixedlen_header.assert_called_once_with(circ_id=1, cmd=9, link_version=3)
+        self.assertFalse(self.mock_relay_header.called)
+        self.assertFalse(self.mock_relay_extend_2_cell.called)
+
+    def test_nspec_not_equal_len_lspecs(self):
+        hdata = self.gen_data(84)
+        lspecs = [self.gen_data(8), self.gen_data(20)]
+
+        self.assertRaisesRegexp(
+            relay.BadPayloadData,
+            '^Expected 0 LinkSpecifiers but found 2$',
+            RelayExtend2Cell.make,
+            1,
+            nspec=0,
+            lspecs=lspecs,
+            hdata=hdata)
+
+        self.mock_fixedlen_header.assert_called_once_with(circ_id=1, cmd=9, link_version=3)
+        self.assertFalse(self.mock_relay_header.called)
+        self.assertFalse(self.mock_relay_extend_2_cell.called)
