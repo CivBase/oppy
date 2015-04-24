@@ -19,10 +19,13 @@ class RelayExtend2CellMakeTestCase(BaseTestCase):
         hdata = self.gen_data(84)
         lspecs = [self.gen_data(8), self.gen_data(20)]
 
-        result = RelayExtend2Cell.make(1, hdata=hdata, lspecs=lspecs, early=False)
+        result = RelayExtend2Cell.make(
+            1, hdata=hdata, lspecs=lspecs, early=False)
 
         self.assertEqual(result, self.mock_relay_extend_2_cell.return_value)
-        self.mock_fixedlen_header.assert_called_once_with(circ_id=1, cmd=3, link_version=3)
+        self.mock_fixedlen_header.assert_called_once_with(
+            circ_id=1, cmd=3, link_version=3)
+
         self.mock_relay_header.assert_called_once_with(
             cmd=14, recognized="\x00\x00", stream_id=0,
             digest="\x00\x00\x00\x00", rpayload_len=117)
@@ -37,12 +40,15 @@ class RelayExtend2CellMakeTestCase(BaseTestCase):
 
         self.assertRaisesRegexp(
             relay.BadPayloadData,
-            '^No Link Specifiers found. At least 1 Link Specifier is required.$',
+            '^No Link Specifiers found. At least 1 Link Specifier is '
+            'required.$',
             RelayExtend2Cell.make,
             1,
             hdata=hdata)
 
-        self.mock_fixedlen_header.assert_called_once_with(circ_id=1, cmd=9, link_version=3)
+        self.mock_fixedlen_header.assert_called_once_with(
+            circ_id=1, cmd=9, link_version=3)
+
         self.assertFalse(self.mock_relay_header.called)
         self.assertFalse(self.mock_relay_extend_2_cell.called)
 
@@ -84,7 +90,8 @@ class RelayExtend2CellMakeTestCase(BaseTestCase):
 
         self.assertRaisesRegexp(
             relay.BadPayloadData,
-            '^htype was 1, but we currently only support 2 \(NTor\) handshakes.$',
+            '^htype was 1, but we currently only support 2 \(NTor\) '
+            'handshakes.$',
             RelayExtend2Cell.make,
             1,
             lspecs=lspecs,
@@ -132,10 +139,13 @@ class RelayExtend2CellMakeTestCase(BaseTestCase):
         hdata = self.gen_data(84)
         lspecs = [self.gen_data(8), self.gen_data(20)]
 
-        result = RelayExtend2Cell.make(1, hdata=hdata, nspec=2, lspecs=lspecs, early=False)
+        result = RelayExtend2Cell.make(
+            1, hdata=hdata, nspec=2, lspecs=lspecs, early=False)
 
         self.assertEqual(result, self.mock_relay_extend_2_cell.return_value)
-        self.mock_fixedlen_header.assert_called_once_with(circ_id=1, cmd=3, link_version=3)
+        self.mock_fixedlen_header.assert_called_once_with(
+            circ_id=1, cmd=3, link_version=3)
+
         self.mock_relay_header.assert_called_once_with(
             cmd=14, recognized="\x00\x00", stream_id=0,
             digest="\x00\x00\x00\x00", rpayload_len=117)
@@ -150,13 +160,16 @@ class RelayExtend2CellMakeTestCase(BaseTestCase):
 
         self.assertRaisesRegexp(
             relay.BadPayloadData,
-            '^No Link Specifiers found. At least 1 Link Specifier is required.$',
+            '^No Link Specifiers found. At least 1 Link Specifier is '
+            'required.$',
             RelayExtend2Cell.make,
             1,
             nspec=0,
             hdata=hdata)
 
-        self.mock_fixedlen_header.assert_called_once_with(circ_id=1, cmd=9, link_version=3)
+        self.mock_fixedlen_header.assert_called_once_with(
+            circ_id=1, cmd=9, link_version=3)
+
         self.assertFalse(self.mock_relay_header.called)
         self.assertFalse(self.mock_relay_extend_2_cell.called)
 
@@ -165,12 +178,15 @@ class RelayExtend2CellMakeTestCase(BaseTestCase):
 
         self.assertRaisesRegexp(
             relay.BadPayloadData,
-            '^No Link Specifiers found. At least 1 Link Specifier is required.$',
+            '^No Link Specifiers found. At least 1 Link Specifier is '
+            'required.$',
             RelayExtend2Cell.make,
             1,
             hdata=hdata)
 
-        self.mock_fixedlen_header.assert_called_once_with(circ_id=1, cmd=9, link_version=3)
+        self.mock_fixedlen_header.assert_called_once_with(
+            circ_id=1, cmd=9, link_version=3)
+
         self.assertFalse(self.mock_relay_header.called)
         self.assertFalse(self.mock_relay_extend_2_cell.called)
 
@@ -187,6 +203,8 @@ class RelayExtend2CellMakeTestCase(BaseTestCase):
             lspecs=lspecs,
             hdata=hdata)
 
-        self.mock_fixedlen_header.assert_called_once_with(circ_id=1, cmd=9, link_version=3)
+        self.mock_fixedlen_header.assert_called_once_with(
+            circ_id=1, cmd=9, link_version=3)
+
         self.assertFalse(self.mock_relay_header.called)
         self.assertFalse(self.mock_relay_extend_2_cell.called)
