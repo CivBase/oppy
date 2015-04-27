@@ -115,7 +115,7 @@ class CellParseTestCase(BaseTestCase):
             'abcdef', mock_varlencell.Header.return_value)
 
     @patch_object(relay, 'RelayCell')
-    def test_relay(self, mock_relaycell):
+    def test_relay_cmd(self, mock_relaycell):
         self.mock_struct.unpack.return_value = ('circ id', 3)
 
         result = AbstractCell.parse(self.gen_data(6), link_version=4)
@@ -129,8 +129,23 @@ class CellParseTestCase(BaseTestCase):
         mock_relaycell._parse.assert_called_once_with(
             'abcdef', mock_relaycell.Header.return_value)
 
+    @patch_object(relay, 'RelayCell')
+    def test_relay_early(self, mock_relaycell):
+        self.mock_struct.unpack.return_value = ('circ id', 9)
+
+        result = AbstractCell.parse(self.gen_data(6), link_version=4)
+
+        self.assertEqual(result, mock_relaycell._parse.return_value)
+        self.mock_struct.calcsize.assert_called_once_with('!IB')
+        self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
+        mock_relaycell.Header.assert_called_once_with(
+            circ_id='circ id', cmd=9, link_version=4)
+
+        mock_relaycell._parse.assert_called_once_with(
+            'abcdef', mock_relaycell.Header.return_value)
+
     @patch_object(fixedlen, 'FixedLenCell')
-    def test_relay_encrypted(self, mock_fixedlencell):
+    def test_relay_cmd_encrypted(self, mock_fixedlencell):
         self.mock_struct.unpack.return_value = ('circ id', 3)
 
         result = AbstractCell.parse(
@@ -141,6 +156,22 @@ class CellParseTestCase(BaseTestCase):
         self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
         mock_fixedlencell.Header.assert_called_once_with(
             circ_id='circ id', cmd=3, link_version=4)
+
+        mock_fixedlencell._parse.assert_called_once_with(
+            'abcdef', mock_fixedlencell.Header.return_value)
+
+    @patch_object(fixedlen, 'FixedLenCell')
+    def test_relay_early_encrypted(self, mock_fixedlencell):
+        self.mock_struct.unpack.return_value = ('circ id', 9)
+
+        result = AbstractCell.parse(
+            self.gen_data(6), link_version=4, encrypted=True)
+
+        self.assertEqual(result, mock_fixedlencell._parse.return_value)
+        self.mock_struct.calcsize.assert_called_once_with('!IB')
+        self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
+        mock_fixedlencell.Header.assert_called_once_with(
+            circ_id='circ id', cmd=9, link_version=4)
 
         mock_fixedlencell._parse.assert_called_once_with(
             'abcdef', mock_fixedlencell.Header.return_value)
