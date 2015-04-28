@@ -13,8 +13,23 @@ class CircuitManagerCircuitOpenedTestCase(BaseTestCase):
         self.mock_assign_possible_pending_requests = patch_object(
             self.cm, '_assignPossiblePendingRequests').start()
 
-    def test_circuit_opened_no_reference(self):
+    def test_circuit_opened_no_reference_sent(self):
         self.cm._pending_circuit_map = {}
+        self.cm._sent_open_message = True
+
+        self.cm.circuitOpened(Mock(circuit_id='test_id'))
+
+        self.mock_logging.debug.assert_has_calls([
+            call('Circuit manager notified that circuit test_id opened.'),
+            call('Circuit manager was notified circuit test_id opened, but '
+                 'manager has no reference to this circuit.')])
+
+        self.assertFalse(self.mock_assign_possible_pending_requests.called)
+        self.assertFalse(self.mock_logging.info.called)
+
+    def test_circuit_opened_no_reference_not_sent(self):
+        self.cm._pending_circuit_map = {}
+        self.cm._sent_open_message = False
 
         self.cm.circuitOpened(Mock(circuit_id='test_id'))
 
