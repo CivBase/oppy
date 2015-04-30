@@ -103,13 +103,13 @@ class CellParseTestCase(BaseTestCase):
     def test_varlen(self, mock_varlencell):
         self.mock_struct.unpack.return_value = ('circ id', 7)
 
-        result = AbstractCell.parse(self.gen_data(6), link_version=4)
+        result = AbstractCell.parse(self.gen_data(6), link_version=1)
 
         self.assertEqual(result, mock_varlencell._parse.return_value)
-        self.mock_struct.calcsize.assert_called_once_with('!IB')
-        self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
+        self.mock_struct.calcsize.assert_called_once_with('!HB')
+        self.mock_struct.unpack.assert_called_once_with('!HB', 'abcde')
         mock_varlencell.Header.assert_called_once_with(
-            circ_id='circ id', cmd=7, link_version=4)
+            circ_id='circ id', cmd=7, link_version=1)
 
         mock_varlencell._parse.assert_called_once_with(
             'abcdef', mock_varlencell.Header.return_value)
@@ -133,13 +133,13 @@ class CellParseTestCase(BaseTestCase):
     def test_relay_early(self, mock_relaycell):
         self.mock_struct.unpack.return_value = ('circ id', 9)
 
-        result = AbstractCell.parse(self.gen_data(6), link_version=4)
+        result = AbstractCell.parse(self.gen_data(6), link_version=1)
 
         self.assertEqual(result, mock_relaycell._parse.return_value)
-        self.mock_struct.calcsize.assert_called_once_with('!IB')
-        self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
+        self.mock_struct.calcsize.assert_called_once_with('!HB')
+        self.mock_struct.unpack.assert_called_once_with('!HB', 'abcde')
         mock_relaycell.Header.assert_called_once_with(
-            circ_id='circ id', cmd=9, link_version=4)
+            circ_id='circ id', cmd=9, link_version=1)
 
         mock_relaycell._parse.assert_called_once_with(
             'abcdef', mock_relaycell.Header.return_value)
@@ -180,40 +180,190 @@ class CellParseTestCase(BaseTestCase):
     def test_fixedlen(self, mock_fixedlencell):
         self.mock_struct.unpack.return_value = ('circ id', 0)
 
-        result = AbstractCell.parse(self.gen_data(6), link_version=4)
+        result = AbstractCell.parse(self.gen_data(6), link_version=1)
 
         self.assertEqual(result, mock_fixedlencell._parse.return_value)
-        self.mock_struct.calcsize.assert_called_once_with('!IB')
-        self.mock_struct.unpack.assert_called_once_with('!IB', 'abcde')
+        self.mock_struct.calcsize.assert_called_once_with('!HB')
+        self.mock_struct.unpack.assert_called_once_with('!HB', 'abcde')
         mock_fixedlencell.Header.assert_called_once_with(
-            circ_id='circ id', cmd=0, link_version=4)
+            circ_id='circ id', cmd=0, link_version=1)
 
         mock_fixedlencell._parse.assert_called_once_with(
             'abcdef', mock_fixedlencell.Header.return_value)
 
     def test_error_invalid_link_version_low(self):
+        self.mock_struct.unpack.return_value = (None, 'not a real command')
         self.assertRaisesRegexp(
             ValueError,
             '^link_version must be leq 4, but found 0 instead$',
             AbstractCell.parse,
-            None,
+            self.gen_data(5),
             link_version=0)
 
         self.assertFalse(self.mock_struct.calcsize.called)
         self.assertFalse(self.mock_struct.unpack.called)
 
-    def test_error_invalid_link_version_high(self):
+    def test_error_invalid_link_version_low_encrypted(self):
+        self.mock_struct.unpack.return_value = ('circ id', 0)
+        self.assertRaisesRegexp(
+            ValueError,
+            '^link_version must be leq 4, but found 0 instead$',
+            AbstractCell.parse,
+            self.gen_data(5),
+            link_version=0,
+            encrypted=True)
+
+        self.assertFalse(self.mock_struct.calcsize.called)
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_invalid_link_version_low_relay_encrypted_short_data(self):
+        self.mock_struct.unpack.return_value = ('circ id', 3)
+        self.assertRaisesRegexp(
+            ValueError,
+            '^link_version must be leq 4, but found 0 instead$',
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=0,
+            encrypted=True)
+
+        self.assertFalse(self.mock_struct.calcsize.called)
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_invalid_link_version_low_relay_early_encrypted_short_data(
+            self):
+        self.mock_struct.unpack.return_value = ('circ id', 9)
+        self.assertRaisesRegexp(
+            ValueError,
+            '^link_version must be leq 4, but found 0 instead$',
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=0,
+            encrypted=True)
+
+        self.assertFalse(self.mock_struct.calcsize.called)
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_invalid_link_version_low_varlen_encrypted_short_data(self):
+        self.mock_struct.unpack.return_value = ('circ id', 7)
+        self.assertRaisesRegexp(
+            ValueError,
+            '^link_version must be leq 4, but found 0 instead$',
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=0,
+            encrypted=True)
+
+        self.assertFalse(self.mock_struct.calcsize.called)
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_invalid_link_version_low_fixedlen_encrypted_short_data(self):
+        self.mock_struct.unpack.return_value = ('circ id', 0)
+        self.assertRaisesRegexp(
+            ValueError,
+            '^link_version must be leq 4, but found 0 instead$',
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=0,
+            encrypted=True)
+
+        self.assertFalse(self.mock_struct.calcsize.called)
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_invalid_link_version_high_encrypted_short_data(self):
+        self.mock_struct.unpack.return_value = (None, 'not a real command')
         self.assertRaisesRegexp(
             ValueError,
             '^link_version must be leq 4, but found 5 instead$',
             AbstractCell.parse,
-            None,
+            self.gen_data(4),
+            link_version=5,
+            encrypted=True)
+
+        self.assertFalse(self.mock_struct.calcsize.called)
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_invalid_link_version_high_relay(self):
+        self.mock_struct.unpack.return_value = ('circ id', 3)
+        self.assertRaisesRegexp(
+            ValueError,
+            '^link_version must be leq 4, but found 5 instead$',
+            AbstractCell.parse,
+            self.gen_data(5),
             link_version=5)
 
         self.assertFalse(self.mock_struct.calcsize.called)
         self.assertFalse(self.mock_struct.unpack.called)
 
-    def test_error_data_shorter_than_header(self):
+    def test_error_invalid_link_version_high_relay_early_encrypted_short_data(
+            self):
+        self.mock_struct.unpack.return_value = (None, 9)
+        self.assertRaisesRegexp(
+            ValueError,
+            '^link_version must be leq 4, but found 5 instead$',
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=5,
+            encrypted=True)
+
+        self.assertFalse(self.mock_struct.calcsize.called)
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_invalid_link_version_high_varlen_encrypted_short_data(self):
+        self.mock_struct.unpack.return_value = (None, 7)
+        self.assertRaisesRegexp(
+            ValueError,
+            '^link_version must be leq 4, but found 5 instead$',
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=5,
+            encrypted=True)
+
+        self.assertFalse(self.mock_struct.calcsize.called)
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_invalid_link_version_high_fixedlen_encrypted_short_data(
+            self):
+        self.mock_struct.unpack.return_value = (None, 0)
+        self.assertRaisesRegexp(
+            ValueError,
+            '^link_version must be leq 4, but found 5 instead$',
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=5,
+            encrypted=True)
+
+        self.assertFalse(self.mock_struct.calcsize.called)
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_short_data_encrypted(self):
+        self.mock_struct.unpack.return_value = (None, 'not a real command')
+
+        self.assertRaises(
+            cell.NotEnoughBytes,
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=1,
+            encrypted=True)
+
+        self.mock_struct.calcsize.assert_called_once_with('!HB')
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_short_data_version_4_encrypted(self):
+        self.mock_struct.unpack.return_value = (None, 'not a real command')
+
+        self.assertRaises(
+            cell.NotEnoughBytes,
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=4,
+            encrypted=True)
+
+        self.mock_struct.calcsize.assert_called_once_with('!IB')
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_short_data_relay(self):
+        self.mock_struct.unpack.return_value = (None, 3)
+
         self.assertRaises(
             cell.NotEnoughBytes,
             AbstractCell.parse,
@@ -221,6 +371,45 @@ class CellParseTestCase(BaseTestCase):
             link_version=1)
 
         self.mock_struct.calcsize.assert_called_once_with('!HB')
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_short_data_version_4_relay_early_encrypted(self):
+        self.mock_struct.unpack.return_value = (None, 9)
+
+        self.assertRaises(
+            cell.NotEnoughBytes,
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=4,
+            encrypted=True)
+
+        self.mock_struct.calcsize.assert_called_once_with('!IB')
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_short_data_version_4_varlen_encrypted(self):
+        self.mock_struct.unpack.return_value = (None, 7)
+
+        self.assertRaises(
+            cell.NotEnoughBytes,
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=4,
+            encrypted=True)
+
+        self.mock_struct.calcsize.assert_called_once_with('!IB')
+        self.assertFalse(self.mock_struct.unpack.called)
+
+    def test_error_short_data_version_4_fixedlen_encrypted(self):
+        self.mock_struct.unpack.return_value = (None, 0)
+
+        self.assertRaises(
+            cell.NotEnoughBytes,
+            AbstractCell.parse,
+            self.gen_data(4),
+            link_version=4,
+            encrypted=True)
+
+        self.mock_struct.calcsize.assert_called_once_with('!IB')
         self.assertFalse(self.mock_struct.unpack.called)
 
     def test_error_invalid_command(self):
